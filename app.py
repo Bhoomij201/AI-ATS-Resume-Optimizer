@@ -3,7 +3,7 @@ from utils.parser import extract_pdf_text
 from utils.ai_extractor import extract_ai_skills
 from utils.ats_score import calculate_ats_score
 from utils.resume_optimizer import optimize_resume
-
+from utils.suggestions import generate_suggestions
 # ----------------------------------
 # Page Configuration
 # ----------------------------------
@@ -203,7 +203,22 @@ if resume_text and job_description:
             )
 
     st.divider()
+    # ----------------------------------
+    # Ai  suggestion
+    # ----------------------------------
+    st.header("AI Suggestions")
 
+    st.write(
+        "Add only those skills that genuinely reflect your knowledge and experience."
+    )
+
+    suggestions = generate_suggestions(
+        missing_skills
+    )
+
+    for skill in suggestions:
+
+        st.write("✔", skill)
     # ----------------------------------
     # Resume Optimization
     # ----------------------------------
@@ -229,10 +244,24 @@ if resume_text and job_description:
         st.subheader(
             "📝 Optimized Resume"
         )
-
-        st.text_area(
-            "",
+        edited_resume = st.text_area(
+            "Edit Resume",
             optimized_resume,
             height=450
-        )
+         )
+        if st.button(
+            "🔄 Recalculate ATS",
+            use_container_width=True
+        ):
 
+            st.info(
+                "ATS recalculation will be implemented next."
+            )
+        if st.button(
+            "📥 Download Resume",
+            use_container_width=True
+        ):
+
+            st.info(
+                "PDF download feature will be implemented next."
+            )
