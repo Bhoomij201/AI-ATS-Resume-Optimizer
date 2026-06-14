@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.parser import extract_pdf_text
+from utils.skills import extract_skills
 
 # -------------------------------
 # Page Configuration
@@ -75,9 +76,71 @@ if job_description:
     )
 
 # -------------------------------
-# Status Check
+# ATS Analysis
 # -------------------------------
 
 if resume_text and job_description:
 
-    st.success("Resume and Job Description are ready for ATS Analysis!")
+    st.success(
+        "Resume and Job Description are ready for ATS Analysis!"
+    )
+
+    st.header("Skill Analysis")
+
+    resume_skills = extract_skills(resume_text)
+
+    jd_skills = extract_skills(job_description)
+
+    matched_skills = list(
+        set(resume_skills).intersection(
+            set(jd_skills)
+        )
+    )
+
+    missing_skills = list(
+        set(jd_skills).difference(
+            set(resume_skills)
+        )
+    )
+
+    # -------------------------------
+    # Resume Skills
+    # -------------------------------
+
+    st.subheader("Resume Skills")
+
+    for skill in resume_skills:
+        st.write("✅", skill)
+
+    # -------------------------------
+    # JD Skills
+    # -------------------------------
+
+    st.subheader("Job Description Skills")
+
+    for skill in jd_skills:
+        st.write("📌", skill)
+
+    # -------------------------------
+    # Matched Skills
+    # -------------------------------
+
+    st.subheader("Matched Skills")
+
+    if matched_skills:
+        for skill in matched_skills:
+            st.write("✅", skill)
+    else:
+        st.warning("No matching skills found.")
+
+    # -------------------------------
+    # Missing Skills
+    # -------------------------------
+
+    st.subheader("Missing Skills")
+
+    if missing_skills:
+        for skill in missing_skills:
+            st.write("❌", skill)
+    else:
+        st.success("No missing skills found!")
