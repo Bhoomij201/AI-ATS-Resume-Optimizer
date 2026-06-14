@@ -2,18 +2,18 @@ import streamlit as st
 from utils.parser import extract_pdf_text
 from utils.skills import extract_skills
 
-# -------------------------------
+# ----------------------------------
 # Page Configuration
-# -------------------------------
+# ----------------------------------
 
 st.set_page_config(
     page_title="AI ATS Resume Optimizer",
     layout="wide"
 )
 
-# -------------------------------
+# ----------------------------------
 # Title
-# -------------------------------
+# ----------------------------------
 
 st.title("AI ATS Resume Optimizer")
 
@@ -21,9 +21,9 @@ st.write(
     "Upload your resume and optimize it according to the Job Description."
 )
 
-# -------------------------------
+# ----------------------------------
 # Resume Upload
-# -------------------------------
+# ----------------------------------
 
 st.header("Upload Resume")
 
@@ -52,9 +52,9 @@ if uploaded_file is not None:
             height=300
         )
 
-# -------------------------------
+# ----------------------------------
 # Job Description
-# -------------------------------
+# ----------------------------------
 
 st.header("Job Description")
 
@@ -75,9 +75,9 @@ if job_description:
         height=250
     )
 
-# -------------------------------
+# ----------------------------------
 # ATS Analysis
-# -------------------------------
+# ----------------------------------
 
 if resume_text and job_description:
 
@@ -87,9 +87,13 @@ if resume_text and job_description:
 
     st.header("Skill Analysis")
 
+    # Extract Skills
+
     resume_skills = extract_skills(resume_text)
 
     jd_skills = extract_skills(job_description)
+
+    # Matched Skills
 
     matched_skills = list(
         set(resume_skills).intersection(
@@ -97,33 +101,50 @@ if resume_text and job_description:
         )
     )
 
+    # Missing Skills
+
     missing_skills = list(
         set(jd_skills).difference(
             set(resume_skills)
         )
     )
 
-    # -------------------------------
+    # ATS Score
+
+    if len(jd_skills) > 0:
+        ats_score = (
+            len(matched_skills) / len(jd_skills)
+        ) * 100
+    else:
+        ats_score = 0
+
+    # ----------------------------------
     # Resume Skills
-    # -------------------------------
+    # ----------------------------------
 
     st.subheader("Resume Skills")
 
-    for skill in resume_skills:
-        st.write("✅", skill)
+    if resume_skills:
+        for skill in resume_skills:
+            st.write("✅", skill)
+    else:
+        st.warning("No skills found.")
 
-    # -------------------------------
+    # ----------------------------------
     # JD Skills
-    # -------------------------------
+    # ----------------------------------
 
     st.subheader("Job Description Skills")
 
-    for skill in jd_skills:
-        st.write("📌", skill)
+    if jd_skills:
+        for skill in jd_skills:
+            st.write("📌", skill)
+    else:
+        st.warning("No skills found.")
 
-    # -------------------------------
+    # ----------------------------------
     # Matched Skills
-    # -------------------------------
+    # ----------------------------------
 
     st.subheader("Matched Skills")
 
@@ -133,9 +154,9 @@ if resume_text and job_description:
     else:
         st.warning("No matching skills found.")
 
-    # -------------------------------
+    # ----------------------------------
     # Missing Skills
-    # -------------------------------
+    # ----------------------------------
 
     st.subheader("Missing Skills")
 
@@ -144,3 +165,23 @@ if resume_text and job_description:
             st.write("❌", skill)
     else:
         st.success("No missing skills found!")
+
+    # ----------------------------------
+    # ATS Score
+    # ----------------------------------
+
+    st.header("ATS Score")
+
+    st.metric(
+        label="Resume ATS Score",
+        value=f"{ats_score:.2f}%"
+    )
+
+    st.progress(int(ats_score))
+
+    if ats_score >= 80:
+        st.success("Excellent ATS Compatibility")
+    elif ats_score >= 60:
+        st.warning("Good ATS Compatibility")
+    else:
+        st.error("Low ATS Compatibility")
