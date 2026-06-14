@@ -1,6 +1,8 @@
 import streamlit as st
 from utils.parser import extract_pdf_text
-from utils.skills import extract_skills
+from utils.ai_extractor import extract_ai_skills
+from utils.ats_score import calculate_ats_score
+from utils.resume_optimizer import optimize_resume
 
 # ----------------------------------
 # Page Configuration
@@ -8,72 +10,59 @@ from utils.skills import extract_skills
 
 st.set_page_config(
     page_title="AI ATS Resume Optimizer",
+    page_icon="🤖",
     layout="wide"
 )
 
 # ----------------------------------
-# Title
+# Header
 # ----------------------------------
 
-st.title("AI ATS Resume Optimizer")
-
-st.write(
-    "Upload your resume and optimize it according to the Job Description."
+st.title("🤖 AI ATS Resume Optimizer")
+st.caption(
+    "Upload Resume • Analyze ATS • Optimize Resume with AI"
 )
 
+st.divider()
+
 # ----------------------------------
-# Resume Upload
+# Upload Section
 # ----------------------------------
 
-st.header("Upload Resume")
-
-uploaded_file = st.file_uploader(
-    "Choose your Resume",
-    type=["pdf", "docx"]
-)
+left, right = st.columns(2)
 
 resume_text = ""
+job_description = ""
 
-if uploaded_file is not None:
+with left:
 
-    st.success("Resume uploaded successfully!")
+    st.subheader("📄 Upload Resume")
 
-    st.write("File Name:", uploaded_file.name)
-
-    if uploaded_file.type == "application/pdf":
-
-        resume_text = extract_pdf_text(uploaded_file)
-
-        st.subheader("Extracted Resume Text")
-
-        st.text_area(
-            "Resume Content",
-            resume_text,
-            height=300
-        )
-
-# ----------------------------------
-# Job Description
-# ----------------------------------
-
-st.header("Job Description")
-
-job_description = st.text_area(
-    "Paste the Job Description here",
-    height=250
-)
-
-if job_description:
-
-    st.success("Job Description Received Successfully!")
-
-    st.subheader("Job Description Text")
-
-    st.text_area(
-        "JD Content",
-        job_description,
-        height=250
+    uploaded_file = st.file_uploader(
+        "Choose Resume",
+        type=["pdf", "docx"]
     )
+
+    if uploaded_file:
+
+        st.success("Resume uploaded successfully!")
+
+        if uploaded_file.type == "application/pdf":
+
+            resume_text = extract_pdf_text(
+                uploaded_file
+            )
+
+with right:
+
+    st.subheader("📋 Job Description")
+
+    job_description = st.text_area(
+        "Paste Job Description",
+        height=220
+    )
+
+st.divider()
 
 # ----------------------------------
 # ATS Analysis
@@ -81,107 +70,169 @@ if job_description:
 
 if resume_text and job_description:
 
-    st.success(
-        "Resume and Job Description are ready for ATS Analysis!"
-    )
+    with st.spinner(
+        "AI is analyzing your resume..."
+    ):
 
-    st.header("Skill Analysis")
-
-    # Extract Skills
-
-    resume_skills = extract_skills(resume_text)
-
-    jd_skills = extract_skills(job_description)
-
-    # Matched Skills
-
-    matched_skills = list(
-        set(resume_skills).intersection(
-            set(jd_skills)
+        resume_skills = extract_ai_skills(
+            resume_text
         )
-    )
 
-    # Missing Skills
-
-    missing_skills = list(
-        set(jd_skills).difference(
-            set(resume_skills)
+        jd_skills = extract_ai_skills(
+            job_description
         )
+
+    ats_score, matched_skills, missing_skills = calculate_ats_score(
+        resume_skills,
+        jd_skills
     )
-
-    # ATS Score
-
-    if len(jd_skills) > 0:
-        ats_score = (
-            len(matched_skills) / len(jd_skills)
-        ) * 100
-    else:
-        ats_score = 0
-
-    # ----------------------------------
-    # Resume Skills
-    # ----------------------------------
-
-    st.subheader("Resume Skills")
-
-    if resume_skills:
-        for skill in resume_skills:
-            st.write("✅", skill)
-    else:
-        st.warning("No skills found.")
-
-    # ----------------------------------
-    # JD Skills
-    # ----------------------------------
-
-    st.subheader("Job Description Skills")
-
-    if jd_skills:
-        for skill in jd_skills:
-            st.write("📌", skill)
-    else:
-        st.warning("No skills found.")
-
-    # ----------------------------------
-    # Matched Skills
-    # ----------------------------------
-
-    st.subheader("Matched Skills")
-
-    if matched_skills:
-        for skill in matched_skills:
-            st.write("✅", skill)
-    else:
-        st.warning("No matching skills found.")
-
-    # ----------------------------------
-    # Missing Skills
-    # ----------------------------------
-
-    st.subheader("Missing Skills")
-
-    if missing_skills:
-        for skill in missing_skills:
-            st.write("❌", skill)
-    else:
-        st.success("No missing skills found!")
 
     # ----------------------------------
     # ATS Score
     # ----------------------------------
 
-    st.header("ATS Score")
+    st.header("📊 ATS Score")
 
-    st.metric(
-        label="Resume ATS Score",
-        value=f"{ats_score:.2f}%"
-    )
+    c1, c2 = st.columns([1, 3])
 
-    st.progress(int(ats_score))
+    with c1:
+
+        st.metric(
+            "Score",
+            f"{ats_score:.2f}%"
+        )
+
+    with c2:
+
+        st.progress(
+            int(ats_score)
+        )
 
     if ats_score >= 80:
-        st.success("Excellent ATS Compatibility")
+
+        st.success(
+            "Excellent ATS Compatibility"
+        )
+
     elif ats_score >= 60:
-        st.warning("Good ATS Compatibility")
+
+        st.warning(
+            "Good ATS Compatibility"
+        )
+
     else:
-        st.error("Low ATS Compatibility")
+
+        st.error(
+            "Low ATS Compatibility"
+        )
+
+    st.divider()
+
+    # ----------------------------------
+    # Resume Skills + JD Skills
+    # ----------------------------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        st.subheader("🧠 Resume Skills")
+
+        if resume_skills:
+
+            st.markdown(
+                " ".join(
+                    [
+                        f"`{skill}`"
+                        for skill in resume_skills
+                    ]
+                )
+            )
+
+    with col2:
+
+        st.subheader("📋 JD Skills")
+
+        if jd_skills:
+
+            st.markdown(
+                " ".join(
+                    [
+                        f"`{skill}`"
+                        for skill in jd_skills
+                    ]
+                )
+            )
+
+    st.divider()
+
+    # ----------------------------------
+    # Matched + Missing
+    # ----------------------------------
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+
+        st.subheader("✅ Matched Skills")
+
+        if matched_skills:
+
+            st.markdown(
+                " ".join(
+                    [
+                        f"`{skill}`"
+                        for skill in matched_skills
+                    ]
+                )
+            )
+
+    with col4:
+
+        st.subheader("❌ Missing Skills")
+
+        if missing_skills:
+
+            st.markdown(
+                " ".join(
+                    [
+                        f"`{skill}`"
+                        for skill in missing_skills
+                    ]
+                )
+            )
+
+    st.divider()
+
+    # ----------------------------------
+    # Resume Optimization
+    # ----------------------------------
+
+    if st.button(
+        "🚀 Optimize Resume",
+        use_container_width=True
+    ):
+
+        with st.spinner(
+            "AI is optimizing your resume..."
+        ):
+
+            optimized_resume = optimize_resume(
+                resume_text,
+                job_description
+            )
+
+        st.success(
+            "Resume Optimized Successfully!"
+        )
+
+        st.subheader(
+            "📝 Optimized Resume"
+        )
+
+        st.text_area(
+            "",
+            optimized_resume,
+            height=450
+        )
+
