@@ -1,5 +1,5 @@
 import streamlit as st
-
+from utils.parser import extract_pdf_text
 st.set_page_config(
     page_title="AI ATS Resume Optimizer",
     layout="wide"
@@ -15,6 +15,17 @@ uploaded_file = st.file_uploader(
 )
 
 if uploaded_file is not None:
+
     st.success("Resume uploaded successfully!")
-    st.write("File Name:", uploaded_file.name)
-    st.write("File Type:", uploaded_file.type)
+
+    if uploaded_file.type == "application/pdf":
+
+        resume_text = extract_pdf_text(uploaded_file)
+
+        st.subheader("Extracted Resume Text")
+
+        st.text_area(
+            "",
+            resume_text,
+            height=300
+        )
