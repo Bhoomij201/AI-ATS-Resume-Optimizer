@@ -1,9 +1,13 @@
 import streamlit as st
 from utils.parser import extract_pdf_text
 from utils.ai_extractor import extract_ai_skills
-from utils.ats_score import calculate_ats_score
+# from utils.ats_score import calculate_ats_score
 from utils.resume_optimizer import optimize_resume
 from utils.suggestions import generate_suggestions
+from utils.advanced_ats import calculate_advanced_ats
+from utils.resume_parser import parse_resume
+from utils.latex_generator import generate_latex
+from utils.pdf_generator import generate_resume_pdf
 # ----------------------------------
 # Page Configuration
 # ----------------------------------
@@ -13,18 +17,43 @@ st.set_page_config(
     page_icon="🤖",
     layout="wide"
 )
+st.markdown(
+    """
+    <style>
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.2rem !important;
+            margin-bottom: 0rem !important;
+        }
+
+        .stCaption {
+            font-size: 0.9rem;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 # ----------------------------------
 # Header
 # ----------------------------------
 
-st.title("🤖 AI ATS Resume Optimizer")
+st.markdown(
+    """
+    <h1>🤖 AI ATS Resume Optimizer</h1>
+    """,
+    unsafe_allow_html=True
+)
+
 st.caption(
     "Upload Resume • Analyze ATS • Optimize Resume with AI"
 )
 
 st.divider()
-
 # ----------------------------------
 # Upload Section
 # ----------------------------------
@@ -61,14 +90,27 @@ with right:
         "Paste Job Description",
         height=220
     )
+# ----------------------------------
+# Calculate ATS Button
+# ----------------------------------
 
-st.divider()
+if "analyze_clicked" not in st.session_state:
+    st.session_state.analyze_clicked = False
+
+if st.button(
+    "🔍 Calculate ATS Score",
+    use_container_width=True
+):
+    st.session_state.analyze_clicked = True
 
 # ----------------------------------
 # ATS Analysis
 # ----------------------------------
-
-if resume_text and job_description:
+if (
+    st.session_state.analyze_clicked
+    and resume_text
+    and job_description
+):
 
     with st.spinner(
         "AI is analyzing your resume..."
@@ -82,14 +124,32 @@ if resume_text and job_description:
             job_description
         )
 
-    ats_score, matched_skills, missing_skills = calculate_ats_score(
-        resume_skills,
-        jd_skills
+    # ats_score, matched_skills, missing_skills = calculate_ats_score(
+    #     resume_skills,
+    #     jd_skills
+    # )
+    ats_data = calculate_advanced_ats(
+    resume_text,
+    job_description,
+    resume_skills,
+    jd_skills
     )
+
+    ats_score = ats_data["final_score"]
+
+    matched_skills = ats_data["matched_skills"]
+
+    missing_skills = list(
+        set(jd_skills).difference(
+            set(resume_skills)
+        )
+    )
+      
 
     # ----------------------------------
     # ATS Score
     # ----------------------------------
+
 
     st.header("📊 ATS Score")
 
@@ -126,45 +186,84 @@ if resume_text and job_description:
             "Low ATS Compatibility"
         )
 
-    st.divider()
+        st.divider()
+        
+        st.subheader("📈 ATS Breakdown")
 
-    # ----------------------------------
-    # Resume Skills + JD Skills
-    # ----------------------------------
+        b1, b2 = st.columns(2)
 
-    col1, col2 = st.columns(2)
+        with b1:
 
-    with col1:
-
-        st.subheader("🧠 Resume Skills")
-
-        if resume_skills:
-
-            st.markdown(
-                " ".join(
-                    [
-                        f"`{skill}`"
-                        for skill in resume_skills
-                    ]
-                )
+            st.write("Skills Match")
+            st.progress(
+                int((ats_data['skill_score']/50)*100)
+            )
+            st.caption(
+                f"{(ats_data['skill_score']/50)*100:.0f}%"
             )
 
-    with col2:
-
-        st.subheader("📋 JD Skills")
-
-        if jd_skills:
-
-            st.markdown(
-                " ".join(
-                    [
-                        f"`{skill}`"
-                        for skill in jd_skills
-                    ]
-                )
+            st.write("Projects Match")
+            st.progress(
+                int((ats_data['project_score']/20)*100)
+            )
+            st.caption(
+                f"{(ats_data['project_score']/20)*100:.0f}%"
             )
 
-    st.divider()
+        with b2:
+
+            st.write("Education Match")
+            st.progress(
+                int((ats_data['education_score']/10)*100)
+            )
+            st.caption(
+                f"{(ats_data['education_score']/10)*100:.0f}%"
+            )
+
+            st.write("Tools Match")
+            st.progress(
+                int((ats_data['tool_score']/20)*100)
+            )
+            st.caption(
+                f"{(ats_data['tool_score']/20)*100:.0f}%"
+            )
+        # ----------------------------------
+        # Resume Skills + JD Skills
+        # ----------------------------------
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.subheader("🧠 Resume Skills")
+
+            if resume_skills:
+
+                st.markdown(
+                    " ".join(
+                        [
+                            f"`{skill}`"
+                            for skill in resume_skills
+                        ]
+                    )
+                )
+
+        with col2:
+
+            st.subheader("📋 JD Skills")
+
+            if jd_skills:
+
+                st.markdown(
+                    " ".join(
+                        [
+                            f"`{skill}`"
+                            for skill in jd_skills
+                        ]
+                    )
+                )
+
+        st.divider()
 
     # ----------------------------------
     # Matched + Missing
@@ -203,52 +302,92 @@ if resume_text and job_description:
             )
 
     st.divider()
-    # ----------------------------------
-    # Ai  suggestion
-    # ----------------------------------
-    st.header("AI Suggestions")
+# ----------------------------------
+# AI Resume Optimization
+# ----------------------------------
 
-    st.write(
-        "Add only those skills that genuinely reflect your knowledge and experience."
-    )
+if "optimized_resume" not in st.session_state:
+    st.session_state.optimized_resume = ""
 
-    suggestions = generate_suggestions(
-        missing_skills
-    )
+if st.button(
+    "🚀 Optimize Resume",
+    use_container_width=True
+):
 
-    for skill in suggestions:
-
-        st.write("✔", skill)
-    # ----------------------------------
-    # Resume Optimization
-    # ----------------------------------
-
-    if st.button(
-        "🚀 Optimize Resume",
-        use_container_width=True
+    with st.spinner(
+        "AI is optimizing your resume..."
     ):
 
-        with st.spinner(
-            "AI is optimizing your resume..."
-        ):
+        st.session_state.optimized_resume = optimize_resume(
+            resume_text,
+            job_description
+        )
 
-            optimized_resume = optimize_resume(
-                resume_text,
-                job_description
+    st.success(
+        "Resume Optimized Successfully!"
+    )
+
+    # ----------------------------------
+    # Resume Preview + TEX Generation
+    # ----------------------------------
+
+    if st.session_state.optimized_resume:
+
+        sections = parse_resume(
+            st.session_state.optimized_resume
+        )
+        sections = parse_resume(
+           st.session_state.optimized_resume
+        )
+
+        st.code(str(sections))
+        latex_code = generate_latex(
+            sections["summary"],
+            sections["education"],
+            sections["experience"],
+            sections["projects"],
+            sections["skills"],
+            sections["achievements"]
+        )
+
+        with open(
+            "generated_resume.tex",
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            file.write(
+                latex_code
             )
 
-        st.success(
-            "Resume Optimized Successfully!"
+        st.subheader(
+            "📄 Optimized Resume"
         )
 
-        st.subheader(
-            "📝 Optimized Resume"
-        )
-        edited_resume = st.text_area(
-            "Edit Resume",
-            optimized_resume,
+        st.text_area(
+            "Generated Resume Content",
+            st.session_state.optimized_resume,
             height=450
-         )
+        )
+
+        st.success(
+            "LaTeX Resume Generated Successfully"
+        )
+
+        st.info(
+            "generated_resume.tex saved in project folder."
+        )
+
+    st.divider()
+
+    # ----------------------------------
+    # Final Actions
+    # ----------------------------------
+
+    col5, col6 = st.columns(2)
+
+    with col5:
+
         if st.button(
             "🔄 Recalculate ATS",
             use_container_width=True
@@ -257,11 +396,14 @@ if resume_text and job_description:
             st.info(
                 "ATS recalculation will be implemented next."
             )
+
+    with col6:
+
         if st.button(
             "📥 Download Resume",
             use_container_width=True
         ):
 
             st.info(
-                "PDF download feature will be implemented next."
+                "PDF generation will be implemented next."
             )
